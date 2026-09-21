@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Reliance Study</title>
+
+  <script src="jspsych/dist/jspsych.js"></script>
+  <script src="jspsych/dist/plugin-html-button-response.js"></script>
+  <script src="jspsych-7-pavlovia-2022.1.1.js"></script>
+  <link href="jspsych/dist/jspsych.css" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg: #f3f5f8;
+      --card: #ffffff;
+      --text: #16324f;
+      --muted: #516273;
+      --border: #d7dee8;
+      --primary: #1f6fb2;
+      --primary-dark: #165a91;
+      --success: #2e7d32;
+      --success-dark: #246428;
+      --danger: #b42318;
+      --shadow: 0 8px 26px rgba(18, 42, 66, 0.08);
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    #jspsych-target,
+    .jspsych-display-element {
+      background: var(--bg);
+    }
+
+    .study-shell {
+      width: min(980px, 94vw);
+      margin: 0 auto;
+      padding: 12px 0 20px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 16px;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    .section-title {
+      font-size: 1.55rem;
+      font-weight: 700;
+      margin: 0 0 14px;
+      color: #0d2f57;
+    }
+
+    .body-copy {
+      font-size: 1.02rem;
+      line-height: 1.65;
+      color: var(--text);
+      margin: 0 0 14px;
+    }
+
+    .instructions-left {
+      text-align: left !important;
+    }
+
+    .jspsych-btn {
+      border-radius: 10px;
+      border: 1px solid var(--primary);
+      background: var(--primary);
+      color: #fff;
+      padding: 12px 18px;
+      font-size: 1rem;
+      cursor: pointer;
+      min-width: 140px;
+      box-shadow: none;
+    }
+
+    .jspsych-btn:hover {
+      background: var(--primary-dark);
+      border-color: var(--primary-dark);
+    }
+
+    .center-actions #jspsych-html-button-response-btngroup {
+      margin-top: 18px;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .task-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .question-count {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .timer {
+      font-weight: 700;
+      color: var(--danger);
+      font-size: 1.05rem;
+    }
+
+    .prompt {
+      font-size: 1.05rem;
+      margin: 0 0 8px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .pattern-wrap {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 10px 0 14px;
+    }
+
+    .pattern-wrap img {
+      display: block;
+      max-width: min(100%, 360px);
+      max-height: 32vh;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+    }
+
+    .question-divider {
+      border: none;
+      border-top: 2px solid var(--border);
+      margin: 12px 0 16px;
+    }
+
+    .ai-row {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 16px;
+    }
+
+    .ai-btn {
+      background: var(--success);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 12px 22px;
+      font-size: 1.05rem;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.14);
+    }
+
+    .ai-btn:hover {
+      background: var(--success-dark);
+    }
+
+    .ai-box {
+      display: none;
+      max-width: min(100%, 340px);
+      background: #eef7ee;
+      border: 1px solid #b7d6b9;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .answers {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      align-items: stretch;
+      margin-bottom: 4px;
+    }
+
+    .answer-card {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 100%;
+      min-width: 0;
+      min-height: 0;
+      border: 2px solid #b8c7da;
+      border-radius: 14px;
+      background: #fbfcfe;
+      padding: 12px 10px;
+      text-align: center;
+      box-sizing: border-box;
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(18, 42, 66, 0.08);
+      transition: transform 0.08s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    .answer-card:hover {
+      border-color: #5f8fbe;
+      box-shadow: 0 4px 14px rgba(31, 111, 178, 0.16);
+    }
+
+    .answer-card:active {
+      transform: scale(0.98);
+    }
+
+    .answer-card img {
+      display: block;
+      margin: 0 auto;
+      max-width: min(100%, 120px);
+      max-height: 120px;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+    }
+
+    .answer-label {
+      margin-top: 10px;
+      font-weight: 700;
+      font-size: 1rem;
+      color: #0d2f57;
+    }
+
+    @media (max-width: 700px) {
+      .study-shell {
+        width: 94vw;
+        padding-top: 16px;
+      }
+
+      .card {
+        padding: 16px;
+      }
+
+      .task-header {
+        margin-bottom: 10px;
+      }
+
+      .prompt {
+        font-size: 0.98rem;
+        line-height: 1.45;
+      }
+
+      .pattern-wrap img {
+        max-height: 24vh;
+        max-width: 100%;
+      }
+
+      .answers {
+        gap: 8px;
+      }
+
+      .answer-card {
+        padding: 8px 6px;
+        border-radius: 12px;
+      }
+
+      .answer-card img {
+        max-width: min(100%, 84px);
+        max-height: 84px;
+      }
+
+      .answer-label {
+        margin-top: 6px;
+        font-size: 0.9rem;
+      }
+
+      .ai-btn {
+        padding: 10px 16px;
+        font-size: 0.95rem;
+        border-radius: 10px;
+      }
+
+      .ai-box {
+        max-width: 92%;
+        font-size: 0.95rem;
+      }
+    }
+  </style>
+</head>
+<body></body>
+
+<script>
+  const jsPsych = initJsPsych();
+
+  // Optional: demographics from Qualtrics redirect URL
+  const params = new URLSearchParams(window.location.search);
+
+  jsPsych.data.addProperties({
+    participant_id: params.get("ID") || "MISSING_ID",
+    age: params.get("age") || "",
+    gender: params.get("gender") || "",
+    edu: params.get("edu") || "",
+    study: params.get("study") || ""
+  });
+
+  const pavlovia_init = {
+    type: jsPsychPavlovia,
+    command: "init"
+  };
+
+  const pavlovia_finish = {
+    type: jsPsychPavlovia,
+    command: "finish",
+  };
+
+  const LOW_TIME = 30000;
+  const HIGH_TIME = 15000;
+  const timePressureCondition = Math.random() < 0.5 ? "low" : "high";
+
+  const questionBlocks = [
+    [
+      { id: "q1", block: 1, pattern: "images/q1.png", options: ["images/arrow_up.png", "images/arrow_down.png", "images/arrow_left.png"], labels: ["A","B","C"], correct: "B", difficulty: "low" },
+      { id: "q2", block: 1, pattern: "images/q2.png", options: ["images/arrow_up.png", "images/arrow_down.png", "images/arrow_right.png"], labels: ["A","B","C"], correct: "A", difficulty: "low" },
+      { id: "q3", block: 1, pattern: "images/q3.png", options: ["images/arrow_left.png", "images/arrow_up.png", "images/arrow_right.png"], labels: ["A","B","C"], correct: "C", difficulty: "low" },
+      { id: "q4", block: 1, pattern: "images/q4.png", options: ["images/arrow_up.png", "images/arrow_left.png", "images/arrow_right.png"], labels: ["A","B","C"], correct: "C", difficulty: "high" },
+      { id: "q5", block: 1, pattern: "images/q5.png", options: ["images/arrow_up.png", "images/arrow_down.png", "images/arrow_left.png"], labels: ["A","B","C"], correct: "A", difficulty: "high" },
+      { id: "q6", block: 1, pattern: "images/q6.png", options: ["images/arrow_up.png", "images/arrow_right.png", "images/arrow_down.png"], labels: ["A","B","C"], correct: "C", difficulty: "high" }
+    ],
+    [
+      { id: "q7", block: 2, pattern: "images/q7.png", options: ["images/q7_answer_topmid_sq_full.png", "images/topright_sq_full.png", "images/topleft_sq_full.png"], labels: ["A","B","C"], correct: "A", difficulty: "low" },
+      { id: "q8", block: 2, pattern: "images/q8.png", options: ["images/midright_sq_full.png", "images/q8_answer.png", "images/topright_sq_full.png"], labels: ["A","B","C"], correct: "B", difficulty: "low" },
+      { id: "q9", block: 2, pattern: "images/q9.png", options: ["images/q9_answer.png", "images/leftcoll_botmid_full.png", "images/midcoll_midright_full.png"], labels: ["A","B","C"], correct: "A", difficulty: "low" },
+      { id: "q10", block: 2, pattern: "images/q10.png", options: ["images/q10_answer.png", "images/midcoll_topmmidright_full.png", "images/leftcoll_botmid_full.png"], labels: ["A","B","C"], correct: "A", difficulty: "high" },
+      { id: "q11", block: 2, pattern: "images/q11.png", options: ["images/q11_answer.png", "images/topright_sq_full.png", "images/midright_sq_full.png"], labels: ["A","B","C"], correct: "A", difficulty: "high" },
+      { id: "q12", block: 2, pattern: "images/q12.png", options: ["images/q12_answer.png", "images/topleft_sq_full.png", "images/midcoll_midright_full.png"], labels: ["A","B","C"], correct: "A", difficulty: "high" }
+    ],
+    [
+      { id: "q13", block: 3, pattern: "images/q13.png", options: ["images/q13_answer.png", "images/q13_answer_option_2.png", "images/q13_answer_option_3.png"], labels: ["A","B","C"], correct: "A", difficulty: "low" },
+      { id: "q14", block: 3, pattern: "images/q14.png", options: ["images/topleft_botright_circlequarters.png", "images/q13_answer_option_3.png", "images/q13_answer_option_2.png"], labels: ["A","B","C"], correct: "B", difficulty: "low" },
+      { id: "q15", block: 3, pattern: "images/q15.png", options: ["images/left_half_circle.png", "images/q13_answer_option_2.png", "images/botright_circle.png"], labels: ["A","B","C"], correct: "C", difficulty: "low" },
+      { id: "q16", block: 3, pattern: "images/q16.png", options: ["images/upper_half_circle.png", "images/right_half_circle.png", "images/bottom_half_circle.png"], labels: ["A","B","C"], correct: "C", difficulty: "high" },
+      { id: "q17", block: 3, pattern: "images/q17.png", options: ["images/left_half_circle.png", "images/bottom_half_circle.png", "images/upper_half_circle.png"], labels: ["A","B","C"], correct: "B", difficulty: "high" },
+      { id: "q18", block: 3, pattern: "images/q18.png", options: ["images/q18_answer.png", "images/botleft_topright_circlequarters.png", "images/botright_circle.png"], labels: ["A","B","C"], correct: "A", difficulty: "high" }
+    ],
+    [
+      { id: "q19", block: 4, pattern: "images/q19.png", options: ["images/q19_answer.png", "images/q20_answer.png", "images/q21_answer.png"], labels: ["A","B","C"], correct: "A", difficulty: "low" },
+      { id: "q20", block: 4, pattern: "images/q20.png", options: ["images/q20_answer.png", "images/q19_answer.png", "images/q22_answer.png"], labels: ["A","B","C"], correct: "A", difficulty: "low" },
+      { id: "q21", block: 4, pattern: "images/q21.png", options: ["images/q21_answer.png", "images/q23_answer.png", "images/q24_answer.png"], labels: ["A","B","C"], correct: "A", difficulty: "low" },
+      { id: "q22", block: 4, pattern: "images/q22.png", options: ["images/q22_answer.png", "images/q20_answer.png", "images/q24_answer.png"], labels: ["A","B","C"], correct: "A", difficulty: "high" },
+      { id: "q23", block: 4, pattern: "images/q23.png", options: ["images/q23_answer.png", "images/q21_answer.png", "images/q19_answer.png"], labels: ["A","B","C"], correct: "A", difficulty: "high" },
+      { id: "q24", block: 4, pattern: "images/q24.png", options: ["images/q24_answer.png", "images/q22_answer.png", "images/q23_answer.png"], labels: ["A","B","C"], correct: "A", difficulty: "high" }
+    ]
+  ];
+
+  questionBlocks.forEach(block => {
+    block.forEach(q => {
+      q.time = timePressureCondition === "high" ? HIGH_TIME : LOW_TIME;
+    });
+  });
+
+  const practiceQuestions = questionBlocks.map(block => {
+    const q = Object.assign({}, block[0]);
+    q.isPractice = true;
+    q.time = LOW_TIME;
+    return q;
+  });
+
+  const mainQuestionsBase = questionBlocks.flat().filter(
+    q => !practiceQuestions.some(p => p.id === q.id)
+  );
+
+  function fisherYates(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function shuffleAvoidAdjacentBlock(items, maxAttempts = 500) {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const shuffled = fisherYates(items);
+      let ok = true;
+      for (let i = 1; i < shuffled.length; i++) {
+        if (shuffled[i].block === shuffled[i - 1].block) {
+          ok = false;
+          break;
+        }
+      }
+      if (ok) return shuffled;
+    }
+    return fisherYates(items);
+  }
+
+  const mainQuestions = shuffleAvoidAdjacentBlock(mainQuestionsBase);
+
+  let mainTrialIndex = 0;
+  let practiceTrialIndex = 0;
+  let currentAIChoice = null;
+  let currentAIConfidence = null;
+  let currentAICorrect = null;
+  let aiRequested = 0;
+  let countdownHandle = null;
+  let trialTimeoutHandle = null;
+  let trialStartTime = null;
+
+  function simulateAIResponse(q) {
+    const accuracy = q.difficulty === "low" ? 0.80 : 0.55;
+    const isCorrect = Math.random() < accuracy;
+
+    let aiAnswer;
+    if (isCorrect) {
+      aiAnswer = q.correct;
+    } else {
+      const wrongOptions = q.labels.filter(label => label !== q.correct);
+      aiAnswer = wrongOptions[Math.floor(Math.random() * wrongOptions.length)];
+    }
+
+    let confidence;
+    if (q.difficulty === "low" && isCorrect) {
+      confidence = Math.floor(Math.random() * (92 - 78 + 1)) + 78;
+    } else if (q.difficulty === "low" && !isCorrect) {
+      confidence = Math.floor(Math.random() * (69 - 55 + 1)) + 55;
+    } else if (q.difficulty === "high" && isCorrect) {
+      confidence = Math.floor(Math.random() * (79 - 63 + 1)) + 63;
+    } else {
+      confidence = Math.floor(Math.random() * (64 - 51 + 1)) + 51;
+    }
+
+    return {
+      answer: aiAnswer,
+      correct: isCorrect,
+      confidence: confidence
+    };
+  }
+
+  function getCurrentQuestion(mode) {
+    return mode === "practice"
+      ? practiceQuestions[practiceTrialIndex]
+      : mainQuestions[mainTrialIndex];
+  }
+
+  function formatSeconds(ms) {
+    return Math.ceil(ms / 1000);
+  }
+
+  function finishQuestion(choiceIndex = null) {
+    if (trialTimeoutHandle) {
+      clearTimeout(trialTimeoutHandle);
+      trialTimeoutHandle = null;
+    }
+    const rt = trialStartTime ? Math.round(performance.now() - trialStartTime) : null;
+    jsPsych.finishTrial({
+      response: choiceIndex,
+      rt: choiceIndex === null ? null : rt
+    });
+  }
+
+  const instructions = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `
+      <div class="study-shell">
+        <div class="card">
+          <h2 class="section-title">Instructions</h2>
+          <p class="body-copy instructions-left">
+            In this study you will solve visual pattern questions by choosing the option that best completes each pattern. You may request an optional AI suggestion before answering, the AI may be right or wrong. You will first complete a short practice section to learn the format, each question will have a fixed time limit, and you should answer as accurately as you can before time runs out. The patterns may follow different types of visual rules, there is no single correct strategy to solve them.
+          </p>
+        </div>
+      </div>
+    `,
+    choices: ["Continue"],
+    on_load: function() {
+      document.body.classList.add("center-actions");
+    },
+    on_finish: function() {
+      document.body.classList.remove("center-actions");
+    }
+  };
+
+  const practiceIntro = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `
+      <div class="study-shell">
+        <div class="card">
+          <h2 class="section-title">Practice section</h2>
+          <p class="body-copy instructions-left">
+            You will now complete one practice question from each pattern block so you can get used to the display, timing, and optional AI feature before the main study begins.
+          </p>
+        </div>
+      </div>
+    `,
+    choices: ["Begin practice"],
+    on_load: function() {
+      document.body.classList.add("center-actions");
+    },
+    on_finish: function() {
+      document.body.classList.remove("center-actions");
+    }
+  };
+
+  const mainIntro = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `
+      <div class="study-shell">
+        <div class="card">
+          <h2 class="section-title" style="text-align:center;">Main study</h2>
+          <p class="body-copy" style="text-align:left;">
+            Practice is complete. The main study will now begin. The remaining questions will appear in a random order, and just like in the practice session, each question will have a fixed time limit.
+          </p>
+        </div>
+      </div>
+    `,
+    choices: ["Start main study"],
+    on_load: function() {
+      document.body.classList.add("center-actions");
+    },
+    on_finish: function() {
+      document.body.classList.remove("center-actions");
+    }
+  };
+
+  function buildTask(mode) {
+    return {
+      type: jsPsychHtmlButtonResponse,
+      choices: [],
+      trial_duration: null,
+      stimulus: function() {
+        const q = getCurrentQuestion(mode);
+        const currentIndex = mode === "practice" ? (practiceTrialIndex + 1) : (mainTrialIndex + 1);
+        const label = mode === "practice" ? "Practice question" : "Question";
+
+        return `
+          <div class="study-shell">
+            <div class="card">
+              <div class="task-header">
+                <div class="question-count">${label} ${currentIndex}</div>
+                <div id="timer" class="timer">Time left: ${formatSeconds(q.time)}</div>
+              </div>
+
+              <p class="prompt">Which option correctly completes the pattern?</p>
+
+              <div class="pattern-wrap">
+                <img src="${q.pattern}" alt="${q.id} pattern">
+              </div>
+
+              <hr class="question-divider">
+
+              <div class="ai-row">
+                <button type="button" id="askAI" class="ai-btn">Request AI suggestion</button>
+                <div id="aiBox" class="ai-box">
+                  AI suggests: <span id="aiAnswer"></span>
+                </div>
+              </div>
+
+              <div class="answers">
+                ${q.options.map((img, i) => `
+                  <button class="answer-card clickable-answer" data-choice="${i}" type="button">
+                    <img src="${img}" alt="Option ${q.labels[i]}">
+                    <div class="answer-label">${q.labels[i]}</div>
+                  </button>
+                `).join("")}
+              </div>
+            </div>
+          </div>
+        `;
+      },
+      on_load: function() {
+        document.body.classList.add("task-screen");
+
+        const q = getCurrentQuestion(mode);
+        const aiResponse = simulateAIResponse(q);
+        currentAIChoice = aiResponse.answer;
+        currentAIConfidence = aiResponse.confidence;
+        currentAICorrect = aiResponse.correct;
+        aiRequested = 0;
+        trialStartTime = performance.now();
+
+        const aiAnswerEl = document.getElementById("aiAnswer");
+        const aiBoxEl = document.getElementById("aiBox");
+        const askAIEl = document.getElementById("askAI");
+        const timerEl = document.getElementById("timer");
+
+        if (aiAnswerEl) aiAnswerEl.textContent = currentAIChoice;
+
+        if (askAIEl) {
+          askAIEl.addEventListener("click", function() {
+            aiRequested = 1;
+            aiBoxEl.style.display = "block";
+          });
+        }
+
+        document.querySelectorAll(".clickable-answer").forEach(btn => {
+          btn.addEventListener("click", function() {
+            const choiceIndex = Number(this.dataset.choice);
+            finishQuestion(choiceIndex);
+          });
+        });
+
+        if (countdownHandle) clearInterval(countdownHandle);
+        if (trialTimeoutHandle) clearTimeout(trialTimeoutHandle);
+
+        let remaining = formatSeconds(q.time);
+        countdownHandle = setInterval(() => {
+          remaining -= 1;
+          if (remaining >= 0 && timerEl) {
+            timerEl.textContent = "Time left: " + remaining;
+          }
+          if (remaining <= 0 && countdownHandle) {
+            clearInterval(countdownHandle);
+            countdownHandle = null;
+          }
+        }, 1000);
+
+        trialTimeoutHandle = setTimeout(() => {
+          finishQuestion(null);
+        }, q.time);
+      },
+      on_finish: function(data) {
+        document.body.classList.remove("task-screen");
+
+        if (countdownHandle) {
+          clearInterval(countdownHandle);
+          countdownHandle = null;
+        }
+
+        if (trialTimeoutHandle) {
+          clearTimeout(trialTimeoutHandle);
+          trialTimeoutHandle = null;
+        }
+
+        const q = getCurrentQuestion(mode);
+
+        data.study_phase = mode;
+        data.question_id = q.id;
+        data.block_number = q.block;
+        data.difficulty = q.difficulty;
+        data.correct_answer = q.correct;
+        data.time_limit = q.time;
+        data.time_pressure_condition = timePressureCondition;
+        data.ai_requested = aiRequested;
+        data.ai_choice = currentAIChoice;
+        data.ai_confidence = currentAIConfidence;
+        data.ai_was_correct = currentAICorrect;
+        data.timed_out = data.response === null;
+
+        if (data.response === null) {
+          data.participant_answer = null;
+          data.correct = false;
+        } else {
+          data.participant_answer = q.labels[data.response];
+          data.correct = data.participant_answer === q.correct;
+        }
+
+        if (aiRequested === 1 && data.participant_answer !== null) {
+          data.followed_ai = data.participant_answer === currentAIChoice;
+        } else {
+          data.followed_ai = null;
+        }
+
+        if (mode === "practice") {
+          practiceTrialIndex += 1;
+        } else {
+          data.main_trial_number = mainTrialIndex + 1;
+          mainTrialIndex += 1;
+        }
+      }
+    };
+  }
+
+  const practiceTask = buildTask("practice");
+  const mainTask = buildTask("main");
+
+  const endScreen = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `
+      <div class="study-shell">
+        <div class="card" style="max-width:760px; margin:0 auto; padding:28px 34px;">
+
+          <h2 class="section-title" style="text-align:center; margin-bottom:22px;">
+            Debriefing
+          </h2>
+
+          <p class="body-copy" style="text-align:left;">
+            Thank you for participating in this study. Your responses have been recorded.
+          </p>
+
+          <p class="body-copy" style="text-align:left;">
+            In this study, the AI system you interacted with was simulated rather than a real artificial intelligence system. The suggestions were generated using a probabilistic algorithm designed to produce both correct and incorrect recommendations, in order to study how people respond to AI suggestions under different conditions.
+          </p>
+
+          <p class="body-copy" style="text-align:left;">
+            This approach was necessary to ensure that the system behaved consistently across participants and to allow for a controlled investigation of decision-making under time pressure.
+          </p>
+
+          <p class="body-copy" style="text-align:left; margin-bottom:0;">
+            If you have any questions about the study, please feel free to contact the researcher.
+          </p>
+
+        </div>
+      </div>
+    `,
+    choices: ["Finish"],
+    on_load: function() {
+      document.body.classList.add("center-actions");
+    },
+    on_finish: function() {
+      document.body.classList.remove("center-actions");
+    }
+  };
+
+  const timeline = [];
+
+  timeline.push(pavlovia_init);
+  timeline.push(instructions);
+
+  timeline.push(practiceIntro);
+
+  for (let i = 0; i < practiceQuestions.length; i++) {
+    timeline.push(practiceTask);
+  }
+
+  timeline.push(mainIntro);
+
+  for (let i = 0; i < mainQuestions.length; i++) {
+    timeline.push(mainTask);
+  }
+
+  timeline.push(endScreen);
+  timeline.push(pavlovia_finish);
+
+  jsPsych.run(timeline);
+</script>
+</html>
