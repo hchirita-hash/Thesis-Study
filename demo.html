@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Reliance Study — Demo</title>
+
+  <script src="jspsych/dist/jspsych.js"></script>
+  <script src="jspsych/dist/plugin-html-button-response.js"></script>
+  <link href="jspsych/dist/jspsych.css" rel="stylesheet" />
+
+  <style>
+    /* ---------- tokens ----------
+       Light only, deliberately: the stimuli are dark navy on a transparent
+       background, so they need a light surface behind them to read correctly. */
+    :root {
+      --bg:          #f6f7f9;
+      --surface:     #ffffff;
+      --surface-2:   #f2f4f7;
+      --border:      #e3e7ed;
+      --border-firm: #cfd6e0;
+      --text:        #14181f;
+      --text-soft:   #5c6673;
+      --accent:      #3d5afe;
+      --accent-soft: #eaedff;
+      --accent-text: #ffffff;
+      --ok:          #12805c;
+      --ok-soft:     #e6f5ef;
+      --warn:        #b26a00;
+      --urgent:      #c0392b;
+      --radius:      14px;
+      --radius-lg:   20px;
+      --shadow:      0 1px 2px rgba(20,24,31,.04), 0 8px 24px rgba(20,24,31,.06);
+      --ring:        0 0 0 3px var(--accent-soft);
+      color-scheme: light;
+    }
+
+    /* ---------- base ---------- */
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto,
+                   "Helvetica Neue", Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #jspsych-target,
+    .jspsych-display-element { background: var(--bg); }
+
+    .jspsych-content-wrapper { min-height: 100vh; }
+    .jspsych-content { max-width: none !important; }
+
+    .shell {
+      width: min(860px, 92vw);
+      margin: 0 auto;
+      padding: clamp(20px, 5vh, 56px) 0;
+      text-align: left;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      padding: clamp(20px, 4vw, 36px);
+      animation: rise .28s cubic-bezier(.2,.7,.3,1);
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .card, .ai-panel { animation: none !important; }
+      * { transition-duration: .01ms !important; }
+    }
+
+    h2.title {
+      font-size: clamp(1.3rem, 3.2vw, 1.75rem);
+      font-weight: 650;
+      letter-spacing: -.02em;
+      margin: 0 0 4px;
+    }
+
+    .subtitle {
+      color: var(--text-soft);
+      font-size: .95rem;
+      margin: 0 0 24px;
+    }
+
+    .copy {
+      font-size: 1rem;
+      color: var(--text);
+      margin: 0 0 18px;
+      max-width: 62ch;
+    }
+
+    .copy--soft { color: var(--text-soft); }
+
+    /* ---------- buttons ---------- */
+    .jspsych-btn {
+      font: inherit;
+      font-weight: 550;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      background: var(--accent);
+      color: var(--accent-text);
+      padding: 11px 22px;
+      cursor: pointer;
+      transition: filter .15s ease, transform .08s ease;
+    }
+    .jspsych-btn:hover  { filter: brightness(1.08); }
+    .jspsych-btn:active { transform: translateY(1px); }
+    .jspsych-btn:focus-visible { outline: none; box-shadow: var(--ring); }
+
+    /* jsPsych appends the button group outside our card, so give it the same
+       width and centring or it drifts out of alignment with everything else. */
+    #jspsych-html-button-response-btngroup {
+      width: min(860px, 92vw);
+      margin: 20px auto 0;
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    /* ---------- trial header ---------- */
+    .trial-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+
+    .counter {
+      font-size: .82rem;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--text-soft);
+    }
+
+    .clock {
+      font-variant-numeric: tabular-nums;
+      font-weight: 650;
+      font-size: .95rem;
+      color: var(--text-soft);
+      transition: color .3s ease;
+    }
+    .clock.is-warn   { color: var(--warn); }
+    .clock.is-urgent { color: var(--urgent); }
+
+    .meter {
+      height: 4px;
+      border-radius: 99px;
+      background: var(--surface-2);
+      overflow: hidden;
+      margin-bottom: 26px;
+    }
+
+    .meter__fill {
+      height: 100%;
+      width: 100%;
+      border-radius: 99px;
+      background: var(--accent);
+      transform-origin: left center;
+      transition: background-color .3s ease;
+    }
+    .meter__fill.is-warn   { background: var(--warn); }
+    .meter__fill.is-urgent { background: var(--urgent); }
+
+    /* ---------- stimulus ---------- */
+    .prompt {
+      font-size: 1.02rem;
+      font-weight: 550;
+      margin: 0 0 18px;
+    }
+
+    /* Fixed box so the card doesn't resize between trials and the stimulus
+       always sits in the same place regardless of the image's aspect ratio. */
+    .stimulus {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: clamp(200px, 30vh, 280px);
+      margin-bottom: 26px;
+    }
+
+    .stimulus img {
+      display: block;
+      max-width: min(100%, 330px);
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+    }
+
+    /* ---------- AI ---------- */
+    .ai-zone { margin: 0 0 24px; }
+
+    .ai-ask {
+      font: inherit;
+      font-weight: 550;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border-firm);
+      border-radius: 10px;
+      padding: 9px 16px;
+      cursor: pointer;
+      transition: border-color .15s ease, background .15s ease;
+    }
+    .ai-ask:hover { border-color: var(--accent); background: var(--accent-soft); }
+    .ai-ask:focus-visible { outline: none; box-shadow: var(--ring); }
+    .ai-ask[hidden] { display: none; }
+
+    .ai-ask__dot {
+      width: 7px; height: 7px; border-radius: 99px;
+      background: var(--ok);
+    }
+
+    .ai-panel {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      background: var(--ok-soft);
+      border: 1px solid color-mix(in srgb, var(--ok) 30%, transparent);
+      border-radius: 12px;
+      padding: 12px 16px;
+      animation: slide .22s cubic-bezier(.2,.7,.3,1);
+    }
+    .ai-panel.is-open { display: flex; }
+
+    @keyframes slide {
+      from { opacity: 0; transform: translateY(-4px); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    .ai-panel__label {
+      font-size: .78rem;
+      font-weight: 650;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      color: var(--ok);
+    }
+
+    .ai-panel__pick {
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+
+    .ai-panel__note {
+      margin-left: auto;
+      font-size: .82rem;
+      color: var(--text-soft);
+    }
+
+    /* ---------- answers ---------- */
+    .options {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .option {
+      position: relative;
+      appearance: none;
+      font: inherit;
+      background: var(--surface);
+      border: 1px solid var(--border-firm);
+      border-radius: var(--radius);
+      padding: 18px 12px 14px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      transition: border-color .15s ease, transform .08s ease, box-shadow .15s ease;
+    }
+    .option:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+    .option:active { transform: translateY(0); }
+    .option:focus-visible { outline: none; box-shadow: var(--ring); border-color: var(--accent); }
+
+    /* Fixed-height media box: without it, images of differing aspect ratio
+       push the A/B/C badges to different heights across the three options. */
+    .option__media {
+      width: 100%;
+      height: 108px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .option__media img {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto; height: auto;
+      object-fit: contain;
+    }
+
+    .option__key {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 26px;
+      height: 26px;
+      border-radius: 7px;
+      background: var(--surface-2);
+      color: var(--text-soft);
+      font-size: .82rem;
+      font-weight: 650;
+      transition: background .15s ease, color .15s ease;
+    }
+    .option:hover .option__key {
+      background: var(--accent);
+      color: var(--accent-text);
+    }
+
+    .hint {
+      margin-top: 18px;
+      font-size: .82rem;
+      color: var(--text-soft);
+      text-align: center;
+    }
+
+    /* ---------- results ---------- */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin: 24px 0 8px;
+    }
+
+    .stat {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+
+    .stat__value {
+      font-size: 1.7rem;
+      font-weight: 680;
+      letter-spacing: -.02em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stat__label {
+      font-size: .8rem;
+      color: var(--text-soft);
+      margin-top: 2px;
+    }
+
+    .banner {
+      background: var(--accent-soft);
+      border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: .9rem;
+      margin-bottom: 22px;
+    }
+
+    /* ---------- small screens ---------- */
+    @media (max-width: 620px) {
+      .options { gap: 8px; }
+      .option { padding: 12px 8px 10px; gap: 8px; }
+      .option__media { height: 76px; }
+      .stimulus { height: clamp(160px, 24vh, 220px); }
+      .ai-panel__note { display: none; }
+      .hint { display: none; }
+    }
+  </style>
+</head>
+<body></body>
+
+<script>
+  /* =========================================================
+     DEMO BUILD
+     Same task logic as index.html. Differences:
+       - Pavlovia init/finish removed, so it runs anywhere
+       - redesigned interface
+       - results summary at the end instead of silent save
+     ========================================================= */
+
+  const jsPsych = initJsPsych();
+
+  const params = new URLSearchParams(window.location.search);
+
+  jsPsych.data.addProperties({
+    participant_id: params.get("ID") || "DEMO",
+    age:    params.get("age")    || "",
+    gender: params.get("gender") || "",
+    edu:    params.get("edu")    || "",
+    study:  params.get("study")  || ""
+  });
+
+  const LOW_TIME  = 30000;
+  const HIGH_TIME = 15000;
+  const timePressureCondition = Math.random() < 0.5 ? "low" : "high";
+
+  const questionBlocks = [
+    [
+      { id: "q1", block: 1, pattern: "images/q1.png", options: ["images/arrow_up.png", "images/arrow_down.png", "images/arrow_left.png"], labels: ["A","B","C"], correct: "B", difficulty: "low" },
+      { id: "q2", block: 1, pattern: "images/q2.png", options: ["images/arrow_up.png", "images/arrow_down.png", "images/arrow_right.png"], labels: ["A","B","C"], correct: "A", difficulty: "low" },
+      { id: "q3", block: 1, pattern: "images/q3.png", options: ["images/arrow_left.png", "images/arrow_up.png", "images/arrow_right.png"], labels: ["A","B","C"], correct: "C", difficulty: "low" },
+      { id: "q4", block: 1, pattern: "images/q4.png", options: ["images/arrow_up.png", "images/arrow_left.png", "images/arrow_right.png"], labels: ["A","B","C"], correct: "C", difficulty: "high" },
+      { id: "q5", block: 1, pattern: "images/q5.png", options: ["images/arrow_up.png", "images/arrow_down.png", "images/arrow_left.png"], labels: ["A","B","C"], correct: "A", difficulty: "high" },
+      { id: "q6", block: 1, pattern: "images/q6.png", options: ["images/arrow_up.png", "images/arrow_right.png", "images/arrow_down.png"], labels: ["A","B","C"], correct: "C", difficulty: "high" }
+    ],
+    [
+      { id: "q7", block: 2, pattern: "images/q7.png", options: ["images/q7_answer_topmid_sq_full.png", "images/topright_sq_full.png", "images/topleft_sq_full.png"], labels: ["A","B","C"], correct: "A", difficulty: "low" },
+      { id: "q8", block: 2, pattern: "images/q8.png", options: ["images/midright_sq_full.png", "images/q8_answer.png", "images/topright_sq_full.png"], labels: ["A","B","C"], correct: "B", difficulty: "low" },
+      { id: "q9", block: 2, pattern: "images/q9.png", options: ["images/q9_answer.png", "images/leftcoll_botmid_full.png", "images/midcoll_midright_full.png"], labels: ["A","B","C"], correct: "A", difficulty: "low" },
+      { id: "q10", block: 2, pattern: "images/q10.png", options: ["images/q10_answer.png", "images/midcoll_topmmidright_full.png", "images/leftcoll_botmid_full.png"], labels: ["A","B","C"], correct: "A", difficulty: "high" },
+      { id: "q11", block: 2, pattern: "images/q11.png", options: ["images/q11_answer.png", "images/topright_sq_full.png", "images/midright_sq_full.png"], labels: ["A","B","C"], correct: "A", difficulty: "high" },
+      { id: "q12", block: 2, pattern: "images/q12.png", options: ["images/q12_answer.png", "images/topleft_sq_full.png", "images/midcoll_midright_full.png"], labels: ["A","B","C"], correct: "A", difficulty: "high" }
+    ],
+    [
+      { id: "q13", block: 3, pattern: "images/q13.png", options: ["images/q13_answer.png", "images/q13_answer_option_2.png", "images/q13_answer_option_3.png"], labels: ["A","B","C"], correct: "A", difficulty: "low" },
+      { id: "q14", block: 3, pattern: "images/q14.png", options: ["images/topleft_botright_circlequarters.png", "images/q13_answer_option_3.png", "images/q13_answer_option_2.png"], labels: ["A","B","C"], correct: "B", difficulty: "low" },
+      { id: "q15", block: 3, pattern: "images/q15.png", options: ["images/left_half_circle.png", "images/q13_answer_option_2.png", "images/botright_circle.png"], labels: ["A","B","C"], correct: "C", difficulty: "low" },
+      { id: "q16", block: 3, pattern: "images/q16.png", options: ["images/upper_half_circle.png", "images/right_half_circle.png", "images/bottom_half_circle.png"], labels: ["A","B","C"], correct: "C", difficulty: "high" },
+      { id: "q17", block: 3, pattern: "images/q17.png", options: ["images/left_half_circle.png", "images/bottom_half_circle.png", "images/upper_half_circle.png"], labels: ["A","B","C"], correct: "B", difficulty: "high" },
+      { id: "q18", block: 3, pattern: "images/q18.png", options: ["images/q18_answer.png", "images/botleft_topright_circlequarters.png", "images/botright_circle.png"], labels: ["A","B","C"], correct: "A", difficulty: "high" }
+    ],
+    [
+      { id: "q19", block: 4, pattern: "images/q19.png", options: ["images/q19_answer.png", "images/q20_answer.png", "images/q21_answer.png"], labels: ["A","B","C"], correct: "A", difficulty: "low" },
+      { id: "q20", block: 4, pattern: "images/q20.png", options: ["images/q20_answer.png", "images/q19_answer.png", "images/q22_answer.png"], labels: ["A","B","C"], correct: "A", difficulty: "low" },
+      { id: "q21", block: 4, pattern: "images/q21.png", options: ["images/q21_answer.png", "images/q23_answer.png", "images/q24_answer.png"], labels: ["A","B","C"], correct: "A", difficulty: "low" },
+      { id: "q22", block: 4, pattern: "images/q22.png", options: ["images/q22_answer.png", "images/q20_answer.png", "images/q24_answer.png"], labels: ["A","B","C"], correct: "A", difficulty: "high" },
+      { id: "q23", block: 4, pattern: "images/q23.png", options: ["images/q23_answer.png", "images/q21_answer.png", "images/q19_answer.png"], labels: ["A","B","C"], correct: "A", difficulty: "high" },
+      { id: "q24", block: 4, pattern: "images/q24.png", options: ["images/q24_answer.png", "images/q22_answer.png", "images/q23_answer.png"], labels: ["A","B","C"], correct: "A", difficulty: "high" }
+    ]
+  ];
+
+  questionBlocks.forEach(block => {
+    block.forEach(q => {
+      q.time = timePressureCondition === "high" ? HIGH_TIME : LOW_TIME;
+    });
+  });
+
+  const practiceQuestions = questionBlocks.map(block => {
+    const q = Object.assign({}, block[0]);
+    q.isPractice = true;
+    q.time = LOW_TIME;
+    return q;
+  });
+
+  const mainQuestionsBase = questionBlocks.flat().filter(
+    q => !practiceQuestions.some(p => p.id === q.id)
+  );
+
+  function fisherYates(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function shuffleAvoidAdjacentBlock(items, maxAttempts = 500) {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const shuffled = fisherYates(items);
+      let ok = true;
+      for (let i = 1; i < shuffled.length; i++) {
+        if (shuffled[i].block === shuffled[i - 1].block) { ok = false; break; }
+      }
+      if (ok) return shuffled;
+    }
+    return fisherYates(items);
+  }
+
+  const mainQuestions = shuffleAvoidAdjacentBlock(mainQuestionsBase);
+
+  let mainTrialIndex = 0;
+  let practiceTrialIndex = 0;
+  let currentAIChoice = null;
+  let currentAIConfidence = null;
+  let currentAICorrect = null;
+  let aiRequested = 0;
+  let countdownHandle = null;
+  let trialTimeoutHandle = null;
+  let trialStartTime = null;
+  let keyHandler = null;
+
+  function simulateAIResponse(q) {
+    const accuracy = q.difficulty === "low" ? 0.80 : 0.55;
+    const isCorrect = Math.random() < accuracy;
+
+    let aiAnswer;
+    if (isCorrect) {
+      aiAnswer = q.correct;
+    } else {
+      const wrongOptions = q.labels.filter(label => label !== q.correct);
+      aiAnswer = wrongOptions[Math.floor(Math.random() * wrongOptions.length)];
+    }
+
+    let confidence;
+    if (q.difficulty === "low" && isCorrect) {
+      confidence = Math.floor(Math.random() * (92 - 78 + 1)) + 78;
+    } else if (q.difficulty === "low" && !isCorrect) {
+      confidence = Math.floor(Math.random() * (69 - 55 + 1)) + 55;
+    } else if (q.difficulty === "high" && isCorrect) {
+      confidence = Math.floor(Math.random() * (79 - 63 + 1)) + 63;
+    } else {
+      confidence = Math.floor(Math.random() * (64 - 51 + 1)) + 51;
+    }
+
+    return { answer: aiAnswer, correct: isCorrect, confidence: confidence };
+  }
+
+  function getCurrentQuestion(mode) {
+    return mode === "practice"
+      ? practiceQuestions[practiceTrialIndex]
+      : mainQuestions[mainTrialIndex];
+  }
+
+  const formatSeconds = ms => Math.ceil(ms / 1000);
+
+  function cleanupTrial() {
+    if (countdownHandle)    { clearInterval(countdownHandle); countdownHandle = null; }
+    if (trialTimeoutHandle) { clearTimeout(trialTimeoutHandle); trialTimeoutHandle = null; }
+    if (keyHandler)         { document.removeEventListener("keydown", keyHandler); keyHandler = null; }
+  }
+
+  function finishQuestion(choiceIndex = null) {
+    cleanupTrial();
+    const rt = trialStartTime ? Math.round(performance.now() - trialStartTime) : null;
+    jsPsych.finishTrial({
+      response: choiceIndex,
+      rt: choiceIndex === null ? null : rt
+    });
+  }
+
+  /* ---------- static screens ---------- */
+
+  function screen(title, subtitle, bodyHtml, buttonLabel) {
+    return {
+      type: jsPsychHtmlButtonResponse,
+      stimulus: `
+        <div class="shell">
+          <div class="card">
+            <h2 class="title">${title}</h2>
+            <p class="subtitle">${subtitle}</p>
+            ${bodyHtml}
+          </div>
+        </div>`,
+      choices: [buttonLabel]
+    };
+  }
+
+  const instructions = screen(
+    "Visual pattern task",
+    "About 10 minutes",
+    `<p class="copy">
+       You will see a series of visual patterns, each with one piece missing.
+       Your job is to pick the option that correctly completes the pattern.
+     </p>
+     <p class="copy">
+       On every question you may ask for a suggestion from an AI assistant.
+       The AI is often right, but not always &mdash; treat it as advice, not as
+       an answer key.
+     </p>
+     <p class="copy copy--soft">
+       Each question has a time limit. Answer as accurately as you can before
+       it runs out. There is no single correct strategy; the patterns follow
+       different kinds of rules.
+     </p>`,
+    "Continue"
+  );
+
+  const practiceIntro = screen(
+    "Practice",
+    "Four questions, not recorded",
+    `<p class="copy">
+       You will now try one question from each pattern type, so you can get used
+       to the layout, the timer, and the AI feature before the main task begins.
+     </p>`,
+    "Begin practice"
+  );
+
+  const mainIntro = screen(
+    "Main task",
+    "20 questions",
+    `<p class="copy">
+       Practice is complete. The questions now appear in a random order, each
+       with a fixed time limit, exactly as in the practice round.
+     </p>`,
+    "Start"
+  );
+
+  /* ---------- trial ---------- */
+
+  function buildTask(mode) {
+    return {
+      type: jsPsychHtmlButtonResponse,
+      choices: [],
+      trial_duration: null,
+
+      stimulus: function() {
+        const q = getCurrentQuestion(mode);
+        const n = mode === "practice" ? practiceTrialIndex + 1 : mainTrialIndex + 1;
+        const total = mode === "practice" ? practiceQuestions.length : mainQuestions.length;
+        const label = mode === "practice" ? "Practice" : "Question";
+
+        return `
+          <div class="shell">
+            <div class="card">
+
+              <div class="trial-head">
+                <span class="counter">${label} ${n} of ${total}</span>
+                <span class="clock" id="clock">${formatSeconds(q.time)}s</span>
+              </div>
+              <div class="meter"><div class="meter__fill" id="meter"></div></div>
+
+              <p class="prompt">Which option completes the pattern?</p>
+
+              <div class="stimulus">
+                <img src="${q.pattern}" alt="Pattern ${q.id}">
+              </div>
+
+              <div class="ai-zone">
+                <button type="button" class="ai-ask" id="askAI">
+                  <span class="ai-ask__dot"></span> Ask the AI
+                </button>
+                <div class="ai-panel" id="aiPanel">
+                  <span class="ai-panel__label">AI suggests</span>
+                  <span class="ai-panel__pick" id="aiPick"></span>
+                  <span class="ai-panel__note">Not always correct</span>
+                </div>
+              </div>
+
+              <div class="options">
+                ${q.options.map((img, i) => `
+                  <button class="option" data-choice="${i}" type="button">
+                    <span class="option__media"><img src="${img}" alt="Option ${q.labels[i]}"></span>
+                    <span class="option__key">${q.labels[i]}</span>
+                  </button>`).join("")}
+              </div>
+
+              <p class="hint">Press A, B or C to answer &middot; Space to ask the AI</p>
+            </div>
+          </div>`;
+      },
+
+      on_load: function() {
+        const q = getCurrentQuestion(mode);
+        const ai = simulateAIResponse(q);
+        currentAIChoice     = ai.answer;
+        currentAIConfidence = ai.confidence;
+        currentAICorrect    = ai.correct;
+        aiRequested  = 0;
+        trialStartTime = performance.now();
+
+        const panel  = document.getElementById("aiPanel");
+        const pick   = document.getElementById("aiPick");
+        const askBtn = document.getElementById("askAI");
+        const clock  = document.getElementById("clock");
+        const meter  = document.getElementById("meter");
+
+        if (pick) pick.textContent = currentAIChoice;
+
+        function revealAI() {
+          if (aiRequested) return;
+          aiRequested = 1;
+          panel.classList.add("is-open");
+          askBtn.hidden = true;
+        }
+
+        askBtn.addEventListener("click", revealAI);
+
+        document.querySelectorAll(".option").forEach(btn => {
+          btn.addEventListener("click", function() {
+            finishQuestion(Number(this.dataset.choice));
+          });
+        });
+
+        keyHandler = function(e) {
+          if (e.repeat) return;
+          const k = e.key.toUpperCase();
+          if (k === " " || e.code === "Space") { e.preventDefault(); revealAI(); return; }
+          const idx = q.labels.indexOf(k);
+          if (idx !== -1) { e.preventDefault(); finishQuestion(idx); }
+        };
+        document.addEventListener("keydown", keyHandler);
+
+        /* timer: numeric readout + depleting bar */
+        cleanupTrialTimersOnly();
+
+        meter.style.transition = `transform ${q.time}ms linear`;
+        requestAnimationFrame(() => { meter.style.transform = "scaleX(0)"; });
+
+        let remaining = formatSeconds(q.time);
+        const threshold = { warn: Math.ceil(q.time / 1000 * 0.4), urgent: 5 };
+
+        countdownHandle = setInterval(() => {
+          remaining -= 1;
+          if (remaining >= 0 && clock) clock.textContent = remaining + "s";
+          if (remaining <= threshold.urgent) {
+            clock.classList.add("is-urgent"); meter.classList.add("is-urgent");
+          } else if (remaining <= threshold.warn) {
+            clock.classList.add("is-warn"); meter.classList.add("is-warn");
+          }
+          if (remaining <= 0) { clearInterval(countdownHandle); countdownHandle = null; }
+        }, 1000);
+
+        trialTimeoutHandle = setTimeout(() => finishQuestion(null), q.time);
+
+        function cleanupTrialTimersOnly() {
+          if (countdownHandle)    { clearInterval(countdownHandle); countdownHandle = null; }
+          if (trialTimeoutHandle) { clearTimeout(trialTimeoutHandle); trialTimeoutHandle = null; }
+        }
+      },
+
+      on_finish: function(data) {
+        cleanupTrial();
+
+        const q = getCurrentQuestion(mode);
+
+        data.study_phase             = mode;
+        data.question_id             = q.id;
+        data.block_number            = q.block;
+        data.difficulty              = q.difficulty;
+        data.correct_answer          = q.correct;
+        data.time_limit              = q.time;
+        data.time_pressure_condition = timePressureCondition;
+        data.ai_requested            = aiRequested;
+        data.ai_choice               = currentAIChoice;
+        data.ai_confidence           = currentAIConfidence;
+        data.ai_was_correct          = currentAICorrect;
+        data.timed_out               = data.response === null;
+
+        if (data.response === null) {
+          data.participant_answer = null;
+          data.correct = false;
+        } else {
+          data.participant_answer = q.labels[data.response];
+          data.correct = data.participant_answer === q.correct;
+        }
+
+        data.followed_ai = (aiRequested === 1 && data.participant_answer !== null)
+          ? data.participant_answer === currentAIChoice
+          : null;
+
+        if (mode === "practice") practiceTrialIndex += 1;
+        else { data.main_trial_number = mainTrialIndex + 1; mainTrialIndex += 1; }
+      }
+    };
+  }
+
+  const practiceTask = buildTask("practice");
+  const mainTask     = buildTask("main");
+
+  /* ---------- results ---------- */
+
+  const results = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: function() {
+      const main = jsPsych.data.get().filter({ study_phase: "main" });
+      const n        = main.count();
+      const asked    = main.filter({ ai_requested: 1 });
+      const nAsked   = asked.count();
+      const followed = asked.filter({ followed_ai: true }).count();
+      const correct  = main.filter({ correct: true }).count();
+
+      const pct = (a, b) => b === 0 ? "&ndash;" : Math.round(a / b * 100) + "%";
+
+      return `
+        <div class="shell">
+          <div class="card">
+            <h2 class="title">How you did</h2>
+            <p class="subtitle">
+              You were in the
+              ${timePressureCondition === "high" ? "15-second" : "30-second"} condition,
+              assigned at random.
+            </p>
+
+            <div class="banner">
+              The AI in this task was <strong>simulated</strong>. Its suggestions came from a
+              probabilistic rule &mdash; roughly 80% accurate on easy items and 55% on hard
+              ones &mdash; so that reliance could be studied under controlled conditions.
+            </div>
+
+            <div class="stats">
+              <div class="stat">
+                <div class="stat__value">${pct(correct, n)}</div>
+                <div class="stat__label">Your accuracy</div>
+              </div>
+              <div class="stat">
+                <div class="stat__value">${pct(nAsked, n)}</div>
+                <div class="stat__label">Trials where you asked the AI</div>
+              </div>
+              <div class="stat">
+                <div class="stat__value">${pct(followed, nAsked)}</div>
+                <div class="stat__label">Of those, you followed it</div>
+              </div>
+            </div>
+
+            <p class="copy copy--soft" style="margin-top:22px">
+              In the original study, participants followed the AI on 87&ndash;89% of the
+              trials where they consulted it &mdash; against a 33% chance baseline &mdash;
+              and time pressure made no significant difference.
+            </p>
+          </div>
+        </div>`;
+    },
+    choices: ["Download my data"],
+    on_finish: function() {
+      jsPsych.data.get().localSave("csv", "ai-reliance-demo.csv");
+    }
+  };
+
+  /* ---------- timeline ---------- */
+
+  const timeline = [instructions, practiceIntro];
+  for (let i = 0; i < practiceQuestions.length; i++) timeline.push(practiceTask);
+  timeline.push(mainIntro);
+  for (let i = 0; i < mainQuestions.length; i++) timeline.push(mainTask);
+  timeline.push(results);
+
+  jsPsych.run(timeline);
+</script>
+</html>
